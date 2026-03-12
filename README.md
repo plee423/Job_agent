@@ -1,37 +1,30 @@
-# Job Search Agent Web App (Two-Agent Backend)
+# Job Search Agent Web App
 
-A local web application with a persistent backend service that runs **two cooperating agents**:
+A local web application for job discovery and job-search writing workflows.
 
-1. **Discovery Agent**: periodically scans credible job sources for each saved profile.
-2. **Writer Agent**: automatically generates default cover-letter drafts for newly discovered jobs.
+## What it does
 
-## Feature set
-
-- Profile store with:
+- Create and save **candidate profiles** with:
   - Resume text
-  - LinkedIn URL
-  - Additional experience stories
-- Background two-agent service (start/stop from web UI)
-- On-demand single run per profile
-- Writing generation tools for:
+  - LinkedIn profile URL
+  - Extra experience stories
+- Run job discovery cycles against credible, public feeds.
+- Store jobs and run history in SQLite.
+- Generate writing drafts for:
   - Cover letters
   - Cold LinkedIn messages
   - LinkedIn InMail
   - Slack messages
-- Per-profile writing customization guidelines saved as markdown
-- Persistent acting principles markdown file (`data/AGENT_ACTING_PRINCIPLES.md`)
+- Save per-profile writing customization guidelines as markdown files.
+- Always maintain an `AGENT_ACTING_PRINCIPLES.md` markdown file in `data/`.
 
-## Backend architecture
+## Stack
 
-- `app.py`: Flask web app and route layer.
-- `service.py`: long-lived orchestrator with two background workers.
-  - Discovery loop runs every poll interval.
-  - New jobs enqueue `(profile_id, job_id)` writing tasks.
-  - Writer loop consumes queue and stores generated drafts.
-- `storage.py`: SQLite data model and persistence.
-  - `profiles`, `jobs`, `runs`, and `drafts` tables.
-- `agent.py`: reusable run-cycle logic used by both CLI and service.
-- `writer.py`: generation primitives + guidelines + acting principles.
+- Flask web app (`app.py`)
+- SQLite storage (`storage.py`)
+- Source adapters (`sources.py`)
+- Matcher/scorer (`matcher.py`)
+- Message generation + guideline persistence (`writer.py`)
 
 ## Run
 
@@ -50,6 +43,13 @@ Open `http://localhost:8000`.
 - We Work Remotely RSS feed
 
 > Note: LinkedIn/Glassdoor protected-page scraping is intentionally not included.
+
+## Key routes
+
+- `/` Home dashboard
+- `/profiles/new` Create profile
+- `/profiles/<id>` View profile + edit writing guidelines
+- `/write` Generate writing drafts
 
 ## Data files
 
