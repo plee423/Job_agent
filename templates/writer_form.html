@@ -1,0 +1,34 @@
+<!doctype html>
+<html>
+  <body>
+    <h1>Message Writer</h1>
+    <form action="/write" method="post">
+      <label>Profile
+        <select name="profile_id" required>
+          {% for p in profiles %}
+          <option value="{{ p.id }}">{{ p.name }}</option>
+          {% endfor %}
+        </select>
+      </label><br />
+
+      <label>Message Type
+        <select name="message_type">
+          <option value="cover_letter">Cover letter</option>
+          <option value="cold_linkedin">Cold LinkedIn message</option>
+          <option value="linkedin_inmail">LinkedIn InMail</option>
+          <option value="slack_message">Slack message</option>
+        </select>
+      </label><br />
+
+      <label>Target Role <input name="role" /></label><br />
+      <label>Company <input name="company" /></label><br />
+      <label>Extra context</label><br />
+      <textarea name="context" rows="6" cols="80"></textarea><br />
+      <button type="submit">Generate</button>
+    </form>
+
+    <h2>Output</h2>
+    <pre>{{ output }}</pre>
+    <a href="/">Back</a>
+  </body>
+</html>

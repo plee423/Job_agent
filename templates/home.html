@@ -1,0 +1,50 @@
+<!doctype html>
+<html>
+  <body>
+    <h1>Job Agent Web App</h1>
+    <a href="/profiles/new">Create profile</a> |
+    <a href="/write">Message writer</a>
+
+    <h2>Two-Agent Backend Service</h2>
+    <p>Status: <strong>{{ service_status.status }}</strong></p>
+    <p>Write queue depth: {{ service_status.queue_depth }}</p>
+    <form action="/service/start" method="post" style="display:inline;">
+      <button type="submit">Start background agents</button>
+    </form>
+    <form action="/service/stop" method="post" style="display:inline;">
+      <button type="submit">Stop background agents</button>
+    </form>
+
+    <h2>Profiles</h2>
+    <ul>
+      {% for p in profiles %}
+      <li>
+        <a href="/profiles/{{ p.id }}">{{ p.name }}</a>
+        <form action="/profiles/{{ p.id }}/run" method="post" style="display:inline;">
+          <button type="submit">Run one search now</button>
+        </form>
+      </li>
+      {% else %}
+      <li>No profiles yet.</li>
+      {% endfor %}
+    </ul>
+
+    <h2>Recent Jobs</h2>
+    <ul>
+      {% for j in jobs %}
+      <li><a href="{{ j.url }}">{{ j.title }}</a> ({{ j.source }}) score={{ j.score }}</li>
+      {% else %}
+      <li>No jobs yet.</li>
+      {% endfor %}
+    </ul>
+
+    <h2>Recent Auto-Generated Cover Letter Drafts</h2>
+    <ul>
+      {% for d in drafts %}
+      <li>{{ d.job_title }} @ {{ d.job_company }} | {{ d.message_type }} | {{ d.status }}</li>
+      {% else %}
+      <li>No drafts yet.</li>
+      {% endfor %}
+    </ul>
+  </body>
+</html>
