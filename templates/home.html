@@ -1,0 +1,31 @@
+<!doctype html>
+<html>
+  <body>
+    <h1>Job Agent Web App</h1>
+    <a href="/profiles/new">Create profile</a> |
+    <a href="/write">Message writer</a>
+
+    <h2>Profiles</h2>
+    <ul>
+      {% for p in profiles %}
+      <li>
+        <a href="/profiles/{{ p.id }}">{{ p.name }}</a>
+        <form action="/profiles/{{ p.id }}/run" method="post" style="display:inline;">
+          <button type="submit">Run search now</button>
+        </form>
+      </li>
+      {% else %}
+      <li>No profiles yet.</li>
+      {% endfor %}
+    </ul>
+
+    <h2>Recent Jobs</h2>
+    <ul>
+      {% for j in jobs %}
+      <li><a href="{{ j.url }}">{{ j.title }}</a> ({{ j.source }}) score={{ j.score }}</li>
+      {% else %}
+      <li>No jobs yet.</li>
+      {% endfor %}
+    </ul>
+  </body>
+</html>

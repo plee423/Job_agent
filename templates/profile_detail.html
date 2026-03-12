@@ -1,0 +1,18 @@
+<!doctype html>
+<html>
+  <body>
+    <h1>{{ profile.name }}</h1>
+    <p><strong>LinkedIn:</strong> {{ profile.linkedin_url }}</p>
+    <h3>Resume</h3>
+    <pre>{{ profile.resume_text }}</pre>
+    <h3>Experience stories</h3>
+    <pre>{{ profile.extra_experience }}</pre>
+
+    <h3>Writing customization guidelines (stored as markdown)</h3>
+    <form action="/profiles/{{ profile.id }}/guidelines" method="post">
+      <textarea name="guidelines" rows="12" cols="100">{{ guidelines }}</textarea><br />
+      <button type="submit">Save guidelines</button>
+    </form>
+    <a href="/">Back</a>
+  </body>
+</html>
