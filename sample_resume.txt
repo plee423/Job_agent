@@ -1,0 +1,12 @@
+Senior Software Engineer
+
+Summary:
+Backend engineer with 7+ years building Python, Django, FastAPI, and distributed systems on AWS.
+
+Skills:
+Python, FastAPI, Django, PostgreSQL, Redis, Kafka, Docker, Kubernetes, AWS, Terraform, CI/CD
+
+Experience:
+- Built scalable APIs for fintech products.
+- Led migration to cloud-native infrastructure.
+- Improved reliability and observability.
