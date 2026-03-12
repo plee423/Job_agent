@@ -37,6 +37,19 @@ CREATE TABLE IF NOT EXISTS runs (
     inserted_count INTEGER DEFAULT 0,
     errors TEXT
 );
+
+CREATE TABLE IF NOT EXISTS drafts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    profile_id INTEGER NOT NULL,
+    job_id INTEGER NOT NULL,
+    message_type TEXT NOT NULL,
+    content TEXT NOT NULL,
+    status TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    UNIQUE(profile_id, job_id, message_type),
+    FOREIGN KEY(profile_id) REFERENCES profiles(id),
+    FOREIGN KEY(job_id) REFERENCES jobs(id)
+);
 """
 
 
@@ -44,9 +57,9 @@ class Storage:
     def __init__(self, path: str = "job_agent.db") -> None:
         self.path = path
         self.conn = sqlite3.connect(self.path)
+        self.conn.row_factory = sqlite3.Row
         self.conn.executescript(SCHEMA)
         self.conn.commit()
-
 
     def create_or_update_profile(self, name: str, linkedin_url: str, resume_text: str, extra_experience: str = "") -> int:
         cur = self.conn.cursor()
@@ -61,35 +74,83 @@ class Storage:
         return int(cur.lastrowid)
 
     def list_profiles(self) -> list[dict]:
-        cur = self.conn.execute(
+        rows = self.conn.execute(
             "SELECT id, name, linkedin_url, resume_text, extra_experience, updated_at FROM profiles ORDER BY id DESC"
-        )
-        cols = [c[0] for c in cur.description]
-        return [dict(zip(cols, row)) for row in cur.fetchall()]
+        ).fetchall()
+        return [dict(r) for r in rows]
 
     def get_profile(self, profile_id: int) -> dict | None:
-        cur = self.conn.execute(
+        row = self.conn.execute(
             "SELECT id, name, linkedin_url, resume_text, extra_experience, updated_at FROM profiles WHERE id = ?",
             (profile_id,),
-        )
-        row = cur.fetchone()
-        if not row:
-            return None
-        cols = [c[0] for c in cur.description]
-        return dict(zip(cols, row))
+        ).fetchone()
+        return dict(row) if row else None
 
     def recent_jobs(self, limit: int = 25) -> list[dict]:
-        cur = self.conn.execute(
+        rows = self.conn.execute(
             """
-            SELECT source, url, title, company, location, published_at, snippet, score, first_seen_at
-            FROM jobs
-            ORDER BY id DESC
-            LIMIT ?
+            SELECT id, source, url, title, company, location, published_at, snippet, score, first_seen_at
+            FROM jobs ORDER BY id DESC LIMIT ?
             """,
             (limit,),
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+    def get_job_id_by_url(self, url: str) -> int | None:
+        row = self.conn.execute("SELECT id FROM jobs WHERE url = ?", (url,)).fetchone()
+        return int(row["id"]) if row else None
+
+    def get_job(self, job_id: int) -> dict | None:
+        row = self.conn.execute(
+            "SELECT id, source, url, title, company, location, published_at, snippet, score, first_seen_at FROM jobs WHERE id = ?",
+            (job_id,),
+        ).fetchone()
+        return dict(row) if row else None
+
+    def create_or_update_draft(self, profile_id: int, job_id: int, message_type: str, content: str, status: str) -> int:
+        self.conn.execute(
+            """
+            INSERT INTO drafts(profile_id, job_id, message_type, content, status, updated_at)
+            VALUES(?, ?, ?, ?, ?, ?)
+            ON CONFLICT(profile_id, job_id, message_type)
+            DO UPDATE SET content = excluded.content, status = excluded.status, updated_at = excluded.updated_at
+            """,
+            (profile_id, job_id, message_type, content, status, datetime.utcnow().isoformat()),
         )
-        cols = [c[0] for c in cur.description]
-        return [dict(zip(cols, row)) for row in cur.fetchall()]
+        self.conn.commit()
+        row = self.conn.execute(
+            "SELECT id FROM drafts WHERE profile_id = ? AND job_id = ? AND message_type = ?",
+            (profile_id, job_id, message_type),
+        ).fetchone()
+        return int(row["id"])
+
+    def list_drafts(self, profile_id: int | None = None, limit: int = 50) -> list[dict]:
+        if profile_id is None:
+            rows = self.conn.execute(
+                """
+                SELECT d.id, d.profile_id, d.job_id, d.message_type, d.status, d.updated_at,
+                       j.title AS job_title, j.company AS job_company
+                FROM drafts d
+                JOIN jobs j ON j.id = d.job_id
+                ORDER BY d.id DESC
+                LIMIT ?
+                """,
+                (limit,),
+            ).fetchall()
+        else:
+            rows = self.conn.execute(
+                """
+                SELECT d.id, d.profile_id, d.job_id, d.message_type, d.status, d.updated_at,
+                       j.title AS job_title, j.company AS job_company
+                FROM drafts d
+                JOIN jobs j ON j.id = d.job_id
+                WHERE d.profile_id = ?
+                ORDER BY d.id DESC
+                LIMIT ?
+                """,
+                (profile_id, limit),
+            ).fetchall()
+        return [dict(r) for r in rows]
 
     def begin_run(self) -> int:
         cur = self.conn.cursor()

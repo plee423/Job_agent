@@ -6,12 +6,14 @@ from typing import Any
 from flask import Flask, redirect, render_template, request, url_for
 
 from agent import run_cycle
+from service import ServiceConfig, TwoAgentService
 from storage import Storage
 from writer import generate_message, load_guidelines, save_guidelines
 
 app = Flask(__name__)
 DATA_DIR = Path("data")
 DATA_DIR.mkdir(exist_ok=True)
+SERVICE = TwoAgentService(ServiceConfig(data_dir=DATA_DIR, db_path="job_agent.db", poll_interval_seconds=900, min_score=0.15))
 
 
 @app.get("/")
@@ -20,9 +22,22 @@ def home() -> str:
     try:
         profiles = store.list_profiles()
         jobs = store.recent_jobs(limit=25)
+        drafts = store.list_drafts(limit=25)
     finally:
         store.close()
-    return render_template("home.html", profiles=profiles, jobs=jobs)
+    return render_template("home.html", profiles=profiles, jobs=jobs, drafts=drafts, service_status=SERVICE.status())
+
+
+@app.post("/service/start")
+def start_service() -> Any:
+    SERVICE.start()
+    return redirect(url_for("home"))
+
+
+@app.post("/service/stop")
+def stop_service() -> Any:
+    SERVICE.stop()
+    return redirect(url_for("home"))
 
 
 @app.get("/profiles/new")
@@ -59,6 +74,7 @@ def profile_detail(profile_id: int) -> str:
     store = Storage()
     try:
         profile = store.get_profile(profile_id)
+        drafts = store.list_drafts(profile_id=profile_id)
     finally:
         store.close()
 
@@ -66,7 +82,7 @@ def profile_detail(profile_id: int) -> str:
         return "profile not found", 404
 
     guidelines = load_guidelines(DATA_DIR / f"profile_{profile_id}_guidelines.md")
-    return render_template("profile_detail.html", profile=profile, guidelines=guidelines)
+    return render_template("profile_detail.html", profile=profile, guidelines=guidelines, drafts=drafts)
 
 
 @app.post("/profiles/<int:profile_id>/guidelines")

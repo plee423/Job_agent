@@ -24,7 +24,15 @@ def _print_alert(posting: JobPosting) -> None:
         print(f"Snippet: {posting.snippet[:220]}")
 
 
-def run_cycle(store: Storage, resume_text: str, linkedin_url: str, keywords: Iterable[str], location: str | None, min_score: float) -> tuple[int, int]:
+def run_cycle(
+    store: Storage,
+    resume_text: str,
+    linkedin_url: str,
+    keywords: Iterable[str],
+    location: str | None,
+    min_score: float,
+    on_new_job=None,
+) -> tuple[int, int]:
     profile = build_profile(
         resume_text=resume_text,
         linkedin_url=linkedin_url,
@@ -48,6 +56,8 @@ def run_cycle(store: Storage, resume_text: str, linkedin_url: str, keywords: Ite
             if store.add_if_new(job):
                 inserted += 1
                 _print_alert(job)
+                if on_new_job:
+                    on_new_job(job)
 
     return discovered, inserted
 

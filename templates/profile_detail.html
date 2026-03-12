@@ -13,6 +13,15 @@
       <textarea name="guidelines" rows="12" cols="100">{{ guidelines }}</textarea><br />
       <button type="submit">Save guidelines</button>
     </form>
+
+    <h3>Generated drafts for this profile</h3>
+    <ul>
+      {% for d in drafts %}
+      <li>{{ d.job_title }} @ {{ d.job_company }} | {{ d.message_type }} | {{ d.status }}</li>
+      {% else %}
+      <li>No drafts yet.</li>
+      {% endfor %}
+    </ul>
     <a href="/">Back</a>
   </body>
 </html>
