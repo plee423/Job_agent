@@ -1,0 +1,11 @@
+{
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/api/index" }
+  ],
+  "crons": [
+    {
+      "path": "/api/cron/run-all",
+      "schedule": "0 */6 * * *"
+    }
+  ]
+}

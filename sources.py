@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 import json
+import os
 from typing import Protocol
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
@@ -97,5 +98,76 @@ class WeWorkRemotelySource:
         return postings
 
 
+class SerpApiSource:
+    """Google Jobs via SerpApi — surfaces LinkedIn, Glassdoor, and other aggregated listings."""
+
+    name = "serpapi"
+    _BASE = "https://serpapi.com/search"
+
+    def __init__(self, api_key: str | None = None):
+        self._api_key = api_key or os.environ.get("SERPAPI_KEY", "")
+
+    def search(self, profile: SearchProfile, min_score: float = 0.15) -> list[JobPosting]:
+        if not self._api_key:
+            raise RuntimeError("SERPAPI_KEY env var is not set — SerpApi source is disabled.")
+
+        query = " ".join(profile.keywords[:8]).strip() or "software engineer"
+        params = urlencode({
+            "engine": "google_jobs",
+            "q": query,
+            "api_key": self._api_key,
+            "chips": "date_posted:week",
+            "num": "20",
+        })
+        req = Request(f"{self._BASE}?{params}", headers={"User-Agent": "job-agent/1.0"})
+        with urlopen(req, timeout=30) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+
+        postings: list[JobPosting] = []
+        for item in data.get("jobs_results", []):
+            title = item.get("title", "")
+            company = item.get("company_name", "")
+            location = item.get("location", "")
+            description = item.get("description", "") or ""
+            published_at = item.get("detected_extensions", {}).get("posted_at", "") or datetime.utcnow().isoformat()
+
+            # Pick the best apply URL — prefer LinkedIn/Glassdoor direct links
+            url = ""
+            for link in item.get("related_links", []):
+                href = link.get("link", "")
+                if href:
+                    url = href
+                    break
+            if not url:
+                # Fall back to the SerpApi job detail page (still has the source link)
+                url = item.get("job_id", "")
+                if url:
+                    url = f"https://www.google.com/search?q={urlencode({'ibp': 'htl;jobs', 'htivrt': 'jobs', 'htiq': query})}&sxsrf=&jbr=sep:0#htivrt=jobs&htiq={urlencode({'': query})[1:]}&fpstate=tldetail&htiltype=JOBS&htichips=job_family_1:job_category&htischips=job_family_1:job_category&sxsrf=&htidocid={url}"
+
+            if not url:
+                continue
+
+            score = score_posting(title, description, profile)
+            if score < min_score:
+                continue
+
+            postings.append(
+                JobPosting(
+                    source=self.name,
+                    title=title,
+                    company=company,
+                    location=location,
+                    url=url,
+                    published_at=published_at,
+                    snippet=(description[:300] + "...") if len(description) > 300 else description,
+                    score=score,
+                )
+            )
+        return postings
+
+
 def default_sources() -> list[JobSource]:
-    return [RemoteOkSource(), WeWorkRemotelySource()]
+    sources: list[JobSource] = [RemoteOkSource(), WeWorkRemotelySource()]
+    if os.environ.get("SERPAPI_KEY"):
+        sources.append(SerpApiSource())
+    return sources

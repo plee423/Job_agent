@@ -1,17 +1,14 @@
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Any
 
 from flask import Flask, redirect, render_template, request, url_for
 
 from agent import run_cycle
 from storage import Storage
-from writer import generate_message, load_guidelines, save_guidelines
+from writer import generate_message
 
 app = Flask(__name__)
-DATA_DIR = Path("data")
-DATA_DIR.mkdir(exist_ok=True)
 
 
 @app.get("/")
@@ -65,14 +62,17 @@ def profile_detail(profile_id: int) -> str:
     if not profile:
         return "profile not found", 404
 
-    guidelines = load_guidelines(DATA_DIR / f"profile_{profile_id}_guidelines.md")
-    return render_template("profile_detail.html", profile=profile, guidelines=guidelines)
+    return render_template("profile_detail.html", profile=profile, guidelines=profile.get("guidelines", ""))
 
 
 @app.post("/profiles/<int:profile_id>/guidelines")
 def save_profile_guidelines(profile_id: int) -> Any:
     content = request.form.get("guidelines", "")
-    save_guidelines(DATA_DIR / f"profile_{profile_id}_guidelines.md", content)
+    store = Storage()
+    try:
+        store.save_guidelines(profile_id, content)
+    finally:
+        store.close()
     return redirect(url_for("profile_detail", profile_id=profile_id))
 
 
@@ -96,6 +96,34 @@ def run_profile_cycle(profile_id: int) -> Any:
     finally:
         store.close()
     return redirect(url_for("home"))
+
+
+@app.get("/api/cron/run-all")
+def cron_run_all() -> Any:
+    """Vercel cron endpoint — runs a discovery cycle for every profile."""
+    store = Storage()
+    try:
+        profiles = store.list_profiles()
+        total_discovered = total_inserted = 0
+        for profile in profiles:
+            run_id = store.begin_run()
+            try:
+                discovered, inserted = run_cycle(
+                    store,
+                    resume_text=profile["resume_text"],
+                    linkedin_url=profile["linkedin_url"],
+                    keywords=profile["extra_experience"].split(",") if profile["extra_experience"] else [],
+                    location=None,
+                    min_score=0.15,
+                )
+                store.end_run(run_id, discovered, inserted, "")
+                total_discovered += discovered
+                total_inserted += inserted
+            except Exception as exc:
+                store.end_run(run_id, 0, 0, str(exc))
+    finally:
+        store.close()
+    return {"profiles": len(profiles), "discovered": total_discovered, "inserted": total_inserted}
 
 
 @app.get("/write")
@@ -125,7 +153,6 @@ def write_generate() -> str:
     role = request.form.get("role", "").strip()
     company = request.form.get("company", "").strip()
     context = request.form.get("context", "").strip()
-    guidelines = load_guidelines(DATA_DIR / f"profile_{profile_id}_guidelines.md")
 
     output = generate_message(
         message_type=message_type,
@@ -133,7 +160,7 @@ def write_generate() -> str:
         role=role,
         company=company,
         context=context,
-        guidelines=guidelines,
+        guidelines=profile.get("guidelines", ""),
     )
 
     return render_template("writer_form.html", profiles=profiles, output=output)
