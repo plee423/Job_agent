@@ -45,7 +45,7 @@ Deployed on Vercel. Set `DATABASE_URL` in Vercel environment variables (Supabase
 ## Hosting — Vercel
 
 - All traffic is routed through `api/index.py` via `vercel.json` rewrites.
-- Job discovery runs automatically every 6 hours via a Vercel Cron Job hitting `GET /api/cron/run-all`.
+- Job discovery runs automatically once daily at 9am UTC via a Vercel Cron Job hitting `GET /api/cron/run-all` (Hobby plan limit: once per day).
 - `DATABASE_URL` must be set as a Vercel environment variable (Supabase direct connection URI).
 - Do **not** rely on the local filesystem in any code path — it will not persist between requests.
 
