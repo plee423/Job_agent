@@ -50,11 +50,23 @@ def build_profile(
     linkedin_url: str,
     user_keywords: Iterable[str] | None = None,
     location: str | None = None,
+    llm_profile: dict | None = None,
 ) -> SearchProfile:
-    auto_keywords = extract_keywords(resume_text)
+    # Prefer LLM-extracted keywords; fall back to frequency-based extraction
+    if llm_profile and llm_profile.get("search_keywords"):
+        auto_keywords = [k.lower() for k in llm_profile["search_keywords"]]
+    else:
+        auto_keywords = extract_keywords(resume_text)
+
+    # LLM target roles feed into title hints
+    if llm_profile and llm_profile.get("target_roles"):
+        llm_title_hints = {w.lower() for role in llm_profile["target_roles"] for w in role.split()}
+        title_hints = sorted(llm_title_hints | set(extract_title_hints(resume_text)))
+    else:
+        title_hints = extract_title_hints(resume_text)
+
     manual = [k.strip().lower() for k in (user_keywords or []) if k.strip()]
     merged = list(dict.fromkeys(manual + auto_keywords))
-    title_hints = extract_title_hints(resume_text)
     return SearchProfile(
         linkedin_url=linkedin_url,
         keywords=merged[:35],

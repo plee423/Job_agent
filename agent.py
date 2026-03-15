@@ -24,12 +24,13 @@ def _print_alert(posting: JobPosting) -> None:
         print(f"Snippet: {posting.snippet[:220]}")
 
 
-def run_cycle(store: Storage, resume_text: str, linkedin_url: str, keywords: Iterable[str], location: str | None, min_score: float) -> tuple[int, int]:
+def run_cycle(store: Storage, resume_text: str, linkedin_url: str, keywords: Iterable[str], location: str | None, min_score: float, llm_profile: dict | None = None) -> tuple[int, int]:
     profile = build_profile(
         resume_text=resume_text,
         linkedin_url=linkedin_url,
         user_keywords=keywords,
         location=location,
+        llm_profile=llm_profile,
     )
 
     discovered = 0

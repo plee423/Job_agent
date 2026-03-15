@@ -18,6 +18,8 @@ _SCHEMA_STATEMENTS = [
         resume_text TEXT NOT NULL,
         extra_experience TEXT DEFAULT '',
         guidelines TEXT DEFAULT '',
+        location TEXT DEFAULT '',
+        llm_profile TEXT DEFAULT '',
         updated_at TEXT NOT NULL
     )
     """,
@@ -45,7 +47,7 @@ _SCHEMA_STATEMENTS = [
         errors TEXT
     )
     """,
-    # Migrate: add guidelines column if upgrading from the old schema
+    # Migrations: add new columns if upgrading from an older schema
     """
     DO $$
     BEGIN
@@ -54,6 +56,18 @@ _SCHEMA_STATEMENTS = [
             WHERE table_name = 'profiles' AND column_name = 'guidelines'
         ) THEN
             ALTER TABLE profiles ADD COLUMN guidelines TEXT DEFAULT '';
+        END IF;
+        IF NOT EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_name = 'profiles' AND column_name = 'location'
+        ) THEN
+            ALTER TABLE profiles ADD COLUMN location TEXT DEFAULT '';
+        END IF;
+        IF NOT EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_name = 'profiles' AND column_name = 'llm_profile'
+        ) THEN
+            ALTER TABLE profiles ADD COLUMN llm_profile TEXT DEFAULT '';
         END IF;
     END $$
     """,
@@ -72,15 +86,23 @@ class Storage:
                 cur.execute(stmt)
         self.conn.commit()
 
-    def create_or_update_profile(self, name: str, linkedin_url: str, resume_text: str, extra_experience: str = "") -> int:
+    def create_or_update_profile(
+        self,
+        name: str,
+        linkedin_url: str,
+        resume_text: str,
+        extra_experience: str = "",
+        location: str = "",
+        llm_profile: str = "",
+    ) -> int:
         with self.conn.cursor() as cur:
             cur.execute(
                 """
-                INSERT INTO profiles(name, linkedin_url, resume_text, extra_experience, guidelines, updated_at)
-                VALUES(%s, %s, %s, %s, '', %s)
+                INSERT INTO profiles(name, linkedin_url, resume_text, extra_experience, guidelines, location, llm_profile, updated_at)
+                VALUES(%s, %s, %s, %s, '', %s, %s, %s)
                 RETURNING id
                 """,
-                (name, linkedin_url, resume_text, extra_experience, datetime.utcnow().isoformat()),
+                (name, linkedin_url, resume_text, extra_experience, location, llm_profile, datetime.utcnow().isoformat()),
             )
             row = cur.fetchone()
         self.conn.commit()
@@ -89,7 +111,7 @@ class Storage:
     def list_profiles(self) -> list[dict]:
         with self.conn.cursor() as cur:
             cur.execute(
-                "SELECT id, name, linkedin_url, resume_text, extra_experience, guidelines, updated_at FROM profiles ORDER BY id DESC"
+                "SELECT id, name, linkedin_url, resume_text, extra_experience, guidelines, location, llm_profile, updated_at FROM profiles ORDER BY id DESC"
             )
             cols = [c[0] for c in cur.description]
             return [dict(zip(cols, row)) for row in cur.fetchall()]
@@ -97,7 +119,7 @@ class Storage:
     def get_profile(self, profile_id: int) -> dict | None:
         with self.conn.cursor() as cur:
             cur.execute(
-                "SELECT id, name, linkedin_url, resume_text, extra_experience, guidelines, updated_at FROM profiles WHERE id = %s",
+                "SELECT id, name, linkedin_url, resume_text, extra_experience, guidelines, location, llm_profile, updated_at FROM profiles WHERE id = %s",
                 (profile_id,),
             )
             row = cur.fetchone()

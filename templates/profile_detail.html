@@ -3,6 +3,37 @@
   <body>
     <h1>{{ profile.name }}</h1>
     <p><strong>LinkedIn:</strong> {{ profile.linkedin_url }}</p>
+    {% if profile.location %}
+    <p><strong>Preferred location:</strong> {{ profile.location }}</p>
+    {% endif %}
+
+    {% if profile.llm_profile %}
+    {% set llm = profile.llm_profile | tojson | tojson %}
+    <h3>Resume Analysis (AI)</h3>
+    {% set data = profile.llm_profile %}
+    <script>
+      var llmData = {{ profile.llm_profile | safe }};
+    </script>
+    <noscript>{{ profile.llm_profile }}</noscript>
+    <div id="llm-analysis">
+      <p><em>Loading AI analysis…</em></p>
+    </div>
+    <script>
+      try {
+        var d = JSON.parse({{ profile.llm_profile | tojson }});
+        var html = "";
+        if (d.seniority) html += "<p><strong>Seniority:</strong> " + d.seniority + "</p>";
+        if (d.target_roles && d.target_roles.length) html += "<p><strong>Target roles:</strong> " + d.target_roles.join(", ") + "</p>";
+        if (d.skills && d.skills.length) html += "<p><strong>Skills:</strong> " + d.skills.join(", ") + "</p>";
+        if (d.industries && d.industries.length) html += "<p><strong>Industries:</strong> " + d.industries.join(", ") + "</p>";
+        if (d.search_keywords && d.search_keywords.length) html += "<p><strong>Search keywords:</strong> " + d.search_keywords.join(", ") + "</p>";
+        document.getElementById("llm-analysis").innerHTML = html || "<p>No analysis data.</p>";
+      } catch(e) {
+        document.getElementById("llm-analysis").innerHTML = "<p>Could not parse analysis.</p>";
+      }
+    </script>
+    {% endif %}
+
     <h3>Resume</h3>
     <pre>{{ profile.resume_text }}</pre>
     <h3>Experience stories</h3>

@@ -112,13 +112,16 @@ class SerpApiSource:
             raise RuntimeError("SERPAPI_KEY env var is not set — SerpApi source is disabled.")
 
         query = " ".join(profile.keywords[:8]).strip() or "software engineer"
-        params = urlencode({
+        payload: dict = {
             "engine": "google_jobs",
             "q": query,
             "api_key": self._api_key,
             "chips": "date_posted:week",
             "num": "20",
-        })
+        }
+        if profile.location:
+            payload["location"] = profile.location
+        params = urlencode(payload)
         req = Request(f"{self._BASE}?{params}", headers={"User-Agent": "job-agent/1.0"})
         with urlopen(req, timeout=30) as resp:
             data = json.loads(resp.read().decode("utf-8"))

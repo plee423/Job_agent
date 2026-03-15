@@ -120,9 +120,10 @@ Minimum score threshold: `0.15` (configurable via `--min-score` in CLI mode).
 - The `add_if_new` deduplication in `storage.py` must be preserved — do not bypass it.
 
 ### 6. Context Handover
-- When the conversation context reaches ~95% capacity, update [HANDOVER.md](HANDOVER.md) with the current project state (decisions made, files changed, outstanding issues, next steps), then ask the user to start a new conversation and reference `HANDOVER.md`.
-- At the start of any new session, if the user mentions prior work, read `HANDOVER.md` immediately before doing anything else.
-- Keep `HANDOVER.md` up to date throughout a session — not just at the 95% threshold.
+- **Read `HANDOVER.md` at the start of any session** where the user references prior work — before doing anything else.
+- **Update `HANDOVER.md` continuously** as changes are made — not just at session end. Every meaningful file change, decision, or resolved issue should be reflected immediately.
+- When context reaches ~95% capacity, do a final `HANDOVER.md` update, then ask the user to start a new conversation referencing it.
+- `HANDOVER.md` is model-agnostic — do not write Claude-specific language into it. It is shared with Codex and other models via their own config files (`AGENTS.md`, etc.).
 
 ---
 

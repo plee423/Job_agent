@@ -6,6 +6,7 @@ from typing import Any
 from flask import Flask, redirect, render_template, request, url_for
 
 from agent import run_cycle
+from llm import analyze_resume, llm_profile_from_json, llm_profile_to_json
 from storage import Storage
 from writer import generate_message
 
@@ -51,6 +52,7 @@ def create_profile() -> Any:
     name = request.form.get("name", "").strip()
     linkedin_url = request.form.get("linkedin_url", "").strip()
     extra_experience = request.form.get("extra_experience", "").strip()
+    location = request.form.get("location", "").strip()
 
     # Accept either a file upload or pasted text
     uploaded_file = request.files.get("resume_file")
@@ -64,6 +66,10 @@ def create_profile() -> Any:
     if not name or not linkedin_url or not resume_text:
         return "name, linkedin_url, and resume_text are required", 400
 
+    # Analyze resume with LLM (no-op if ANTHROPIC_API_KEY not set)
+    llm_data = analyze_resume(resume_text)
+    llm_profile_json = llm_profile_to_json(llm_data) if llm_data else ""
+
     store = Storage()
     try:
         store.create_or_update_profile(
@@ -71,6 +77,8 @@ def create_profile() -> Any:
             linkedin_url=linkedin_url,
             resume_text=resume_text,
             extra_experience=extra_experience,
+            location=location,
+            llm_profile=llm_profile_json,
         )
     finally:
         store.close()
@@ -116,8 +124,9 @@ def run_profile_cycle(profile_id: int) -> Any:
             resume_text=profile["resume_text"],
             linkedin_url=profile["linkedin_url"],
             keywords=profile["extra_experience"].split(",") if profile["extra_experience"] else [],
-            location=None,
+            location=profile.get("location") or None,
             min_score=0.15,
+            llm_profile=llm_profile_from_json(profile.get("llm_profile", "")),
         )
         store.end_run(run_id, discovered, inserted, "")
     finally:
@@ -140,8 +149,9 @@ def cron_run_all() -> Any:
                     resume_text=profile["resume_text"],
                     linkedin_url=profile["linkedin_url"],
                     keywords=profile["extra_experience"].split(",") if profile["extra_experience"] else [],
-                    location=None,
+                    location=profile.get("location") or None,
                     min_score=0.15,
+                    llm_profile=llm_profile_from_json(profile.get("llm_profile", "")),
                 )
                 store.end_run(run_id, discovered, inserted, "")
                 total_discovered += discovered
