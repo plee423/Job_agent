@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import io
 from typing import Any
 
 from flask import Flask, redirect, render_template, request, url_for
@@ -9,6 +10,24 @@ from storage import Storage
 from writer import generate_message
 
 app = Flask(__name__)
+
+
+def _extract_resume_text(file_storage) -> str:
+    """Extract plain text from an uploaded PDF or DOCX file, entirely in memory."""
+    filename = file_storage.filename or ""
+    data = file_storage.read()
+
+    if filename.lower().endswith(".pdf"):
+        import pypdf
+        reader = pypdf.PdfReader(io.BytesIO(data))
+        return "\n".join(page.extract_text() or "" for page in reader.pages)
+
+    if filename.lower().endswith(".docx"):
+        import docx
+        doc = docx.Document(io.BytesIO(data))
+        return "\n".join(p.text for p in doc.paragraphs)
+
+    return ""
 
 
 @app.get("/")
@@ -31,8 +50,16 @@ def new_profile_form() -> str:
 def create_profile() -> Any:
     name = request.form.get("name", "").strip()
     linkedin_url = request.form.get("linkedin_url", "").strip()
-    resume_text = request.form.get("resume_text", "").strip()
     extra_experience = request.form.get("extra_experience", "").strip()
+
+    # Accept either a file upload or pasted text
+    uploaded_file = request.files.get("resume_file")
+    if uploaded_file and uploaded_file.filename:
+        resume_text = _extract_resume_text(uploaded_file).strip()
+        if not resume_text:
+            return "Could not extract text from the uploaded file. Try a different file or paste your resume as text.", 400
+    else:
+        resume_text = request.form.get("resume_text", "").strip()
 
     if not name or not linkedin_url or not resume_text:
         return "name, linkedin_url, and resume_text are required", 400

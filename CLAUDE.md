@@ -119,6 +119,11 @@ Minimum score threshold: `0.15` (configurable via `--min-score` in CLI mode).
 - Profiles are stored in Postgres. Do not silently overwrite or delete profile data.
 - The `add_if_new` deduplication in `storage.py` must be preserved — do not bypass it.
 
+### 6. Context Handover
+- When the conversation context reaches ~95% capacity, update [HANDOVER.md](HANDOVER.md) with the current project state (decisions made, files changed, outstanding issues, next steps), then ask the user to start a new conversation and reference `HANDOVER.md`.
+- At the start of any new session, if the user mentions prior work, read `HANDOVER.md` immediately before doing anything else.
+- Keep `HANDOVER.md` up to date throughout a session — not just at the 95% threshold.
+
 ---
 
 ## Developer Notes

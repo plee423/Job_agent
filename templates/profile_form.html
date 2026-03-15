@@ -2,13 +2,24 @@
 <html>
   <body>
     <h1>Create Profile</h1>
-    <form action="/profiles" method="post">
-      <label>Name <input name="name" required /></label><br />
-      <label>LinkedIn URL <input name="linkedin_url" required /></label><br />
-      <label>Resume text</label><br />
-      <textarea name="resume_text" rows="12" cols="80" required></textarea><br />
+    <form action="/profiles" method="post" enctype="multipart/form-data">
+      <label>Name <input name="name" required /></label><br /><br />
+      <label>LinkedIn URL <input name="linkedin_url" required /></label><br /><br />
+
+      <fieldset>
+        <legend>Resume — upload a file <em>or</em> paste text below</legend>
+        <label>Upload PDF or Word file<br />
+          <input type="file" name="resume_file" accept=".pdf,.docx" />
+        </label><br /><br />
+        <label>Or paste resume text<br />
+          <textarea name="resume_text" rows="12" cols="80" placeholder="Paste your resume here if not uploading a file"></textarea>
+        </label>
+      </fieldset>
+      <br />
+
       <label>Extra experience stories (freeform, comma-separated keywords optional)</label><br />
-      <textarea name="extra_experience" rows="8" cols="80"></textarea><br />
+      <textarea name="extra_experience" rows="8" cols="80"></textarea><br /><br />
+
       <button type="submit">Save profile</button>
     </form>
     <a href="/">Back</a>
